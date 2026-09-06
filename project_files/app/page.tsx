@@ -26,17 +26,7 @@ import {
   SelectItem,
 } from '@/components/ui/select';
 import { tutors, slotLabel } from '@/lib/tutors';
-function track(event: string, properties: Record<string, unknown> = {}) {
-  fetch('/api/events', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      event,
-      properties,
-      distinct_id: sessionStorage.getItem('visitor') || 'anonymous',
-    }),
-  }).catch(() => {});
-}
+import {demoRequest,track} from '@/lib/demo-api';
 function Choice({
   value,
   onChange,
@@ -76,8 +66,7 @@ export default function Home() {
     [busy, setBusy] = useState(false),
     [reference, setReference] = useState('');
   useEffect(() => {
-    if (!sessionStorage.getItem('visitor'))
-      sessionStorage.setItem('visitor', crypto.randomUUID());
+    try {if (!sessionStorage.getItem('visitor')) sessionStorage.setItem('visitor', crypto.randomUUID());} catch {}
     track('page_viewed');
   }, []);
   async function book(t: (typeof tutors)[number]) {
@@ -90,7 +79,7 @@ export default function Home() {
     setSlots([]);
     track('booking_started', { tutor_id: t.id });
     try {
-      const r = await fetch('/api/availability?tutor=' + t.id);
+      const r = await demoRequest('/api/availability?tutor=' + t.id);
       if (!r.ok) throw Error();
       setSlots(((await r.json()) as { slots: string[] }).slots);
     } catch {
@@ -147,7 +136,7 @@ export default function Home() {
     setError('');
     const f = new FormData(e.currentTarget);
     try {
-      const r = await fetch('/api/bookings', {
+      const r = await demoRequest('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -216,9 +205,9 @@ export default function Home() {
           <aside className="intro-note">
             <span className="note-index">01 / A GOOD PLACE TO START</span>
             <h2>
-              Learning feels better
+              Learning feels better{' '}
               <br />
-              with someone
+              with someone{' '}
               <br />
               in your corner.
             </h2>
@@ -272,7 +261,7 @@ export default function Home() {
                 <article className={'tutor-card ' + t.color} key={t.id}>
                   <div className="portrait">
                     <img
-                      src={'/tutor-' + t.id + '.jpg'}
+                      src={'./tutor-' + t.id + '.jpg'}
                       alt={'Sample portrait for ' + t.name}
                     />
                     <span className="portrait-tag">
@@ -376,7 +365,7 @@ export default function Home() {
           Dana’s<span className="brand-light">tutoring</span>
         </a>
         <span>Room to learn. Space to grow.</span>
-        <small>Prototype · sample sessions only</small>
+        <small>Prototype · demo bookings stay in this browser</small>
       </footer>
       <Dialog
         open={!!tutor}
@@ -387,12 +376,12 @@ export default function Home() {
         <DialogContent className="booking-dialog">
           <DialogTitle className="dialog-title">
             {step === 3
-              ? 'Your request is saved.'
+              ? 'Your demo request is saved.'
               : `Book with ${tutor?.name.split(' ')[0]}`}
           </DialogTitle>
           <DialogDescription>
             {step === 3
-              ? 'This is a prototype booking. No real session or email has been scheduled.'
+              ? 'Saved in this browser only. Dana has not received a request, and no real session or email has been scheduled.'
               : `Step ${step} of 2 · One hour · $${tutor?.rate} · No payment now`}
           </DialogDescription>
           {step === 1 ? (
@@ -444,7 +433,7 @@ export default function Home() {
                 onClick={() => {
                   setStep(1);
                   setSlot('');
-                  fetch('/api/availability?tutor=' + tutor!.id)
+                  demoRequest('/api/availability?tutor=' + tutor!.id)
                     .then((r) => r.json())
                     .then((d) => setSlots((d as { slots: string[] }).slots))
                     .catch(() =>
@@ -505,11 +494,10 @@ export default function Home() {
                 </div>
               </div>
               <p className="small-text">
-                Use sample information for this prototype. Your request is
-                stored so the booking flow can be demonstrated.
+                Use sample information for this prototype. Only the sample tutor and time are saved in this browser. Names and email are not saved or sent.
               </p>
               <button className="primary" disabled={busy}>
-                {busy ? 'Saving…' : 'Submit session request'}{' '}
+                {busy ? 'Saving…' : 'Save demo request'}{' '}
                 <ArrowRight size={18} />
               </button>
             </form>
